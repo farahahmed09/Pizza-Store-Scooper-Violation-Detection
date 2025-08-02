@@ -15,7 +15,7 @@ Instructions:
 import cv2
 
 # --- Constants ---
-VIDEO_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\videos\Sah w b3dha ghalt (2).mp4"
+VIDEO_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\videos\Sah w b3dha ghalt (3).mp4"
 WINDOW_NAME = "Live ROI Selector"
 CONTROLS_WINDOW_NAME = "ROI Controls"
 
