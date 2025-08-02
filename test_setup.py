@@ -14,9 +14,7 @@ import cv2
 from ultralytics import YOLO
 
 # --- Constants ---
-# Make sure to replace 'your_yolo_model.pt' with the actual name of your model file.
 MODEL_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\models\yolo12m-v2.pt"
-# Make sure to replace 'Sah w b3dha ghalt.mp4' with the actual name of your video file.
 VIDEO_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\videos\Sah w b3dha ghalt.mp4"
 
 def main(model_path: str, video_path: str) -> None:
