@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EagleVision Violation Detection</title>
+    <style>
+        body { font-family: sans-serif; background-color: #282c34; color: white; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #61dafb; }
+        #video { border: 2px solid #61dafb; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>EagleVision - Live Feed</h1>
+    <img id="video" width="1024">
+
+    <script>
+        // Get the image element
+        const videoElement = document.getElementById('video');
+
+        // Create a WebSocket connection to our FastAPI backend
+        const ws = new WebSocket("ws://localhost:8000/ws/video");
+
+        // This function is called every time a message (a frame) is received
+        ws.onmessage = function(event) {
+            // The event.data is a Blob of the JPEG image
+            // Create a URL from the Blob and set it as the source of the image tag
+            videoElement.src = URL.createObjectURL(event.data);
+        };
+
+        ws.onopen = function(event) {
+            console.log("WebSocket connection established.");
+        };
+
+        ws.onerror = function(event) {
+            console.error("WebSocket error observed:", event);
+        };
+    </script>
+</body>
+</html>
