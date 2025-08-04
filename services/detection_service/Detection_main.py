@@ -3,7 +3,9 @@ import cv2
 from ultralytics import YOLO
 import pika
 import numpy as np
-# REMOVED: import os is no longer needed
+import json
+import base64
+
 
 # --- Paths & Config ---
 MODEL_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\models\yolo12m-v2.pt"
@@ -151,18 +153,23 @@ def process_frame(ch, method, properties, body):
 
     # Annotate and publish frame to results_queue
     annotated_frame = results[0].plot()
-    for x1, y1, x2, y2 in ROIS:
-        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-    cv2.putText(annotated_frame, f"State: {system_state.upper()}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    cv2.putText(annotated_frame, f"Violations: {violation_count}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    # --- Prepare and Publish Results as JSON ---
+    annotated_frame = results[0].plot()
+    for x1, y1, x2, y2 in ROIS: cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
-    # Encode frame and send to output queue
-    success, encoded_annotated_image = cv2.imencode('.jpg', annotated_frame)
+    # Encode frame to Base64 text
+    success, buffer = cv2.imencode('.jpg', annotated_frame)
     if success:
-        ch.basic_publish(exchange='',
-                         routing_key='results_queue',
-                         body=encoded_annotated_image.tobytes())
-        print("  => Published annotated frame to results_queue", flush=True)
+        frame_as_text = base64.b64encode(buffer).decode('utf-8')
+        # Create the structured message
+        message = {
+            "frame": frame_as_text,
+            "violations": violation_count,
+            "state": system_state
+        }
+        # Publish the JSON string
+        ch.basic_publish(exchange='', routing_key='results_queue', body=json.dumps(message))
+        print(f"Frame {frame_idx}: Published results. Violations: {violation_count}", flush=True)
 
 # --- Setup RabbitMQ Consumer ---
 try:
