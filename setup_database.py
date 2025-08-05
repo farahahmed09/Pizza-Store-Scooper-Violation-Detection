@@ -9,14 +9,14 @@ VIOLATIONS_DIR = "data/violations"
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 os.makedirs(VIOLATIONS_DIR, exist_ok=True)
 
-# Connect to the database (this will create the file if it doesn't exist)
+# Connect to the database (this will create the file)
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
-# Drop the old table if it exists, to ensure a clean start
+# Drop the old table if it exists to ensure a clean start
 cursor.execute("DROP TABLE IF EXISTS violations")
 
-# Create the table with the correct, final schema
+# Create the table with the final, correct schema
 cursor.execute('''
     CREATE TABLE violations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

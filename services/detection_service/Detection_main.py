@@ -8,7 +8,7 @@ import base64
 import sqlite3
 import datetime
 import os
-
+import shutil
 
 
 # --- Paths & Config ---
@@ -105,6 +105,7 @@ def log_violation(frame_idx, raw_frame, results):
         print(f"  💾 Violation at frame {frame_idx} logged to database.", flush=True)
     except Exception as e:
         print(f"❌ Error saving to database: {e}", flush=True)
+
 # --- Initialize Models and State ---
 model = YOLO(MODEL_PATH)
 hand_detector = Detector(model, 'hand')
@@ -224,27 +225,17 @@ def process_frame(ch, method, properties, body):
         print(f"Frame {frame_idx}: Published results. Violations: {violation_count}", flush=True)
 
 # --- Setup RabbitMQ Consumer ---
-try:
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-    channel = connection.channel()
-    
-    # Declare input and output queues
-    channel.queue_declare(queue='video_frames')
-    channel.queue_declare(queue='results_queue')
-
-    # Start consuming frames
-    channel.basic_consume(queue='video_frames', on_message_callback=process_frame, auto_ack=True)
-
-    print('✅ Detection Service started. Waiting for frames...', flush=True)
-    channel.start_consuming()
-
-# Handle connection failure or manual shutdown
-except pika.exceptions.AMQPConnectionError:
-    print("❌ Detection Service could not connect to RabbitMQ. Is it running?", flush=True)
-except KeyboardInterrupt:
-    print("\nStopping consumer...", flush=True)
-finally:
-    # Cleanup on shutdown
-    if 'connection' in locals() and connection.is_open:
-        connection.close()
-    print("Detection service stopped.", flush=True)
+if __name__ == "__main__":
+    try:
+        os.makedirs(VIOLATIONS_DIR, exist_ok=True)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        channel = connection.channel()
+        channel.queue_declare(queue='video_frames'); channel.queue_declare(queue='results_queue')
+        channel.basic_consume(queue='video_frames', on_message_callback=process_frame, auto_ack=True)
+        print('✅ Detection Service started. Waiting for frames...', flush=True)
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        print("\nStopping consumer...", flush=True)
+    finally:
+        if 'connection' in locals() and connection.is_open: connection.close()
+        print("Detection service stopped.", flush=True)
