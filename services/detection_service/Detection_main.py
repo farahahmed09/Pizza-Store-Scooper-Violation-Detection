@@ -5,10 +5,16 @@ import pika
 import numpy as np
 import json
 import base64
+import sqlite3
+import datetime
+import os
+
 
 
 # --- Paths & Config ---
 MODEL_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\models\yolo12m-v2.pt"
+DB_PATH = "data/violations.db"
+VIOLATIONS_DIR = "data/violations" # Directory to save violation files
 
 # Hardcoded regions of interest (ROIs) for detecting hand intrusions
 ROIS = [
@@ -21,7 +27,7 @@ MONITORING_TIMEOUT_SECONDS = 3
 ROI_TRIGGER_THRESHOLD = 0.4
 VIOLATION_THRESHOLD = 0.29
 SCOOPER_USAGE_THRESHOLD = 0.1
-WAIT_COUNTER_THRESHOLD = 10
+WAIT_COUNTER_THRESHOLD = 25
 
 # Calculate Intersection over Union (IoU) between two bounding boxes
 def calculate_iou(boxA, boxB):
@@ -55,7 +61,50 @@ class Detector:
             if self.model.names[int(box.cls)] == self.target_class:
                 coords.append(box.xyxy[0])
         return coords
+# NEW simplified version
+def setup_database():
+    """Confirms that the violations directory exists."""
+    os.makedirs(VIOLATIONS_DIR, exist_ok=True)
+    print("✅ Violations directory confirmed.")
 
+def log_violation(frame_idx, raw_frame, results):
+    """Saves violation frame as an image, data as a JSON, and paths to the DB."""
+    timestamp = datetime.datetime.now()
+    
+    # Define file paths
+    base_filename = f"violation_{timestamp.strftime('%Y%m%d_%H%M%S')}_f{frame_idx}"
+    image_filename = f"{base_filename}.jpg"
+    json_filename = f"{base_filename}.json"
+    image_path = os.path.join(VIOLATIONS_DIR, image_filename)
+    data_path = os.path.join(VIOLATIONS_DIR, json_filename)
+
+    # 1. Save the raw frame as an image
+    cv2.imwrite(image_path, raw_frame)
+
+    # 2. Save the bounding box data as a JSON file
+    violation_data = []
+    for box in results[0].boxes:
+        violation_data.append({
+            "class": model.names[int(box.cls)],
+            "coordinates": box.xyxy[0].tolist(),
+            "confidence": float(box.conf[0])
+        })
+    with open(data_path, 'w') as f:
+        json.dump({"timestamp": timestamp.isoformat(), "frame_index": frame_idx, "detections": violation_data}, f, indent=4)
+
+    # 3. Save the file paths to the database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO violations (timestamp, frame_index, image_path, data_path) VALUES (?, ?, ?, ?)",
+            (timestamp.isoformat(), frame_idx, image_path, data_path)
+        )
+        conn.commit()
+        conn.close()
+        print(f"  💾 Violation at frame {frame_idx} logged to database.", flush=True)
+    except Exception as e:
+        print(f"❌ Error saving to database: {e}", flush=True)
 # --- Initialize Models and State ---
 model = YOLO(MODEL_PATH)
 hand_detector = Detector(model, 'hand')
@@ -67,7 +116,6 @@ frame_idx = 0
 violation_count = 0
 hand_was_in_roi_prev_frame = False
 grap_it = True  # Indicates whether the hand is currently trying to grab something
-put_it_back = False  # Placeholder state (not used currently)
 system_state = "idle"  # Finite-state machine control
 monitoring_start_frame = -1
 original_fps = 10
@@ -76,7 +124,7 @@ wait_counter = 0  # Used to avoid false positives from transient violations
 
 # Callback for each frame received via RabbitMQ
 def process_frame(ch, method, properties, body):
-    global frame_idx, violation_count, hand_was_in_roi_prev_frame, put_it_back, system_state, monitoring_start_frame, grap_it, wait_counter
+    global frame_idx, violation_count, hand_was_in_roi_prev_frame, system_state, monitoring_start_frame, grap_it, wait_counter
 
     frame_idx += 1  # Increment frame index
 
@@ -101,7 +149,6 @@ def process_frame(ch, method, properties, body):
     # --- FSM: IDLE state ---
     if system_state == "idle":
         print(f"  GRAP IT: {grap_it}", flush=True)
-        print(f"  👀PUTTTTT: {put_it_back}", flush=True)
         # Trigger monitoring if hand enters ROI
         if is_hand_in_roi_now and not hand_was_in_roi_prev_frame:
             system_state = "monitoring"
@@ -137,6 +184,10 @@ def process_frame(ch, method, properties, body):
                 wait_counter = 0
                 violation_count += 1
                 print(f"  🚨 VIOLATION! Hand on pizza without scooper. Total: {violation_count}", flush=True)
+                # --- NEW: Call the function to save the violation ---
+                annotated_frame_for_db = results[0].plot() # Create a clean annotated frame for saving
+                #log_violation(frame_idx, annotated_frame_for_db, results)
+                log_violation(frame_idx, frame, results)
                 system_state = "idle"
 
         # Monitoring timeout or hand re-entered ROI without action
