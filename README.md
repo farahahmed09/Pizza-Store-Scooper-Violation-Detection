@@ -46,25 +46,13 @@ myenv\Scripts\activate
 
 ### 4. Install Python Dependencies
 
-Create a `requirements.txt` file in the root of the project with the following content:
+Install the `requirements.txt` file in the root of the project.
+this will install all the required libraries.
 
 ```
-ultralytics
-opencv-python
-pika
-fastapi
-uvicorn
-python-multipart
-websockets
-numpy
-Pillow
-```
-
-Then, install all the required libraries by running:
-
-```bash
 pip install -r requirements.txt
 ```
+
 
 ### 5. Install Erlang and RabbitMQ
 
@@ -116,21 +104,35 @@ python setup_database.py
 
 ### 3. Run the Microservices
 
-You will need to open three separate terminals. In each, navigate to the project root and activate your virtual environment.
 
-#### Terminal 1: Start the Detection Service
+
+#### 1. Open RabbitMQ Management Dashboard
+
+Open your web browser and go to:
+
+```
+http://localhost:15672
+```
+You should see the RabbitMQ management dashboard.
+
+---
+
+
+#### 2. You will need to open three separate terminals. In each, navigate to the project root and activate your virtual environment.
+
+##### Terminal 1: Start the Detection Service
 
 ```bash
 python services/detection_service/main.py
 ```
 
-#### Terminal 2: Start the Streaming Service
+##### Terminal 2: Start the Streaming Service
 
 ```bash
 python services/streaming_service/main.py
 ```
 
-#### Terminal 3: Start the Frame Reader
+##### Terminal 3: Start the Frame Reader
 
 ```bash
 python services/frame_reader/main.py
@@ -144,9 +146,6 @@ Open your web browser and go to:
 http://localhost:8000
 ```
 
-You should see the live video feed and the analysis panel.
-
----
 
 ## Technology Stack
 
