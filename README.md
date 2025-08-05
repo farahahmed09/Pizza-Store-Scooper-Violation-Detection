@@ -2,16 +2,14 @@
 
 ## Overview
 
-[cite_start]This project is focused on building a Computer Vision system for a pizza store to monitor hygiene protocol compliance[cite: 3].  
-[cite_start]Specifically, the system detects whether workers are using a scooper when picking up certain ingredients from designated areas (ROIs - Regions of Interest)[cite: 4].  
-[cite_start]Any action of picking up these ingredients without a scooper will be flagged as a violation[cite: 5].
+This project is focused on building a Computer Vision system for a pizza store to monitor hygiene protocol compliance.Specifically, the system detects whether workers are using a scooper when picking up certain ingredients from designated areas (ROIs - Regions of Interest).Any action of picking up these ingredients without a scooper will be flagged as a violation.
 
 ## Features
 
-- [cite_start]**Real-time Violation Detection**: Analyzes video streams to flag hygiene protocol violations as they happen[cite: 11, 15].
-- [cite_start]**Microservices Architecture**: The system is decoupled into independent services for scalability and maintainability[cite: 7, 32, 33].
-- [cite_start]**Database Logging**: Every confirmed violation is saved to a persistent database with relevant metadata.
-- [cite_start]**Web-Based User Interface**: A live dashboard displays the video feed, all AI detections, and a real-time count of violations with on-screen alerts[cite: 15, 56, 78].
+- **Real-time Violation Detection**: Analyzes video streams to flag hygiene protocol violations as they happen.
+- **Microservices Architecture**: The system is decoupled into independent services for scalability and maintainability.
+- **Database Logging**: Every confirmed violation is saved to a persistent database with relevant metadata.
+- **Web-Based User Interface**: A live dashboard displays the video feed, all AI detections, and a real-time count of violations with on-screen alerts.
 
 
 ## Setup Instructions
