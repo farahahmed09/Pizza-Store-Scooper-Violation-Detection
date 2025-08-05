@@ -1,5 +1,12 @@
-# services/frame_reader/main.py
+"""
+File: Frame_reader_main.py
 
+Description:
+FastAPI-based web service for:
+1. Serving the frontend UI.
+2. Streaming real-time detection results via WebSocket (from RabbitMQ).
+3. Exposing REST APIs to retrieve violation records and serve saved images.
+"""
 import cv2
 import pika
 import time
