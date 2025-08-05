@@ -147,8 +147,8 @@ http://localhost:8000
 
 ## Technology Stack
 
-**Backend**: Python  
-**Computer Vision**: OpenCV, Ultralytics YOLO 
-**Microservices and API**: FastAPI, WebSockets, RabbitMQ, Pika, Uvicorn 
-**Database**: SQLite, Pillow
-**Frontend**: HTML, CSS
+* **Backend**: Python
+* **Computer Vision**: OpenCV, Ultralytics YOLO
+* **Microservices and API**: FastAPI, WebSockets, RabbitMQ, Pika, Uvicorn
+* **Database**: SQLite , Pillow
+* **Frontend**: HTML, CSS
