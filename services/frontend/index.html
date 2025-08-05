@@ -13,7 +13,38 @@
         .panel-title { margin-top: 0; color: #0099ff; border-bottom: 2px solid #0099ff; padding-bottom: 10px; text-align: center; }
         .info-box { text-align: center; margin-bottom: 24px; }
         #violation-count { font-size: 4.5em; font-weight: bold; color: #28a745; margin: 0; }
-        #view-violations-btn { background-color: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 1em; cursor: pointer; margin-top: 20px; width: 100%; }
+        
+        /* --- NEW STYLES for the buttons and layout --- */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+            margin-top: 20px;
+        }
+        #view-violations-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            flex-grow: 1; /* Allows the button to grow */
+        }
+        #close-violations-btn {
+            display: none; /* Hidden by default */
+            flex-shrink: 0;
+            width: 45px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.5em; /* Makes the 'X' larger */
+            line-height: 1;
+            cursor: pointer;
+        }
+        /* ------------------------------------------- */
+
         #violations-container { margin-top: 20px; width: 100%; text-align: left; max-height: 400px; overflow-y: auto; }
         .violation-item { background-color: #333; border-radius: 5px; padding: 10px; margin-bottom: 10px; }
         .violation-item p { margin: 0 0 5px 0; }
@@ -27,7 +58,12 @@
         <div class="panel">
             <h2 class="panel-title">Analysis</h2>
             <div class="info-box"><h3>Violations</h3><p id="violation-count">0</p></div>
-            <button id="view-violations-btn">View Saved Violations</button>
+
+            <div class="button-group">
+                <button id="view-violations-btn">View Saved Violations</button>
+                <button id="close-violations-btn">&times;</button>
+            </div>
+
             <div id="violations-container"></div>
         </div>
     </div>
@@ -37,6 +73,8 @@
         const violationCountElement = document.getElementById('violation-count');
         const viewViolationsBtn = document.getElementById('view-violations-btn');
         const violationsContainer = document.getElementById('violations-container');
+        // NEW: Get a reference to the close button
+        const closeViolationsBtn = document.getElementById('close-violations-btn');
         
         // WebSocket logic (unchanged)
         function connectWebSocket() {
@@ -60,7 +98,6 @@
                 content += '<p>No violations saved yet.</p>';
             } else {
                 violations.forEach(v => {
-                    // Extract just the filename from the path
                     const imageName = v.image_path.split(/[\\/]/).pop();
                     content += `
                         <div class="violation-item">
@@ -73,6 +110,16 @@
                 });
             }
             violationsContainer.innerHTML = content;
+            // NEW: Show the close button
+            closeViolationsBtn.style.display = 'block';
+        });
+
+        // NEW: Add an event listener for the close button
+        closeViolationsBtn.addEventListener('click', () => {
+            // Clear the results from the container
+            violationsContainer.innerHTML = '';
+            // Hide the close button again
+            closeViolationsBtn.style.display = 'none';
         });
 
         connectWebSocket();

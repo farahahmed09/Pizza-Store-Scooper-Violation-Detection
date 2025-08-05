@@ -185,10 +185,11 @@ def process_frame(ch, method, properties, body):
                 violation_count += 1
                 print(f"  🚨 VIOLATION! Hand on pizza without scooper. Total: {violation_count}", flush=True)
                 # --- NEW: Call the function to save the violation ---
-                annotated_frame_for_db = results[0].plot() # Create a clean annotated frame for saving
-                #log_violation(frame_idx, annotated_frame_for_db, results)
+                #annotated_frame_for_db = results[0].plot()
                 log_violation(frame_idx, frame, results)
                 system_state = "idle"
+            else:
+                system_state = "monitoring" 
 
         # Monitoring timeout or hand re-entered ROI without action
         elif (frame_idx - monitoring_start_frame) > monitoring_timeout_frames or (hand_roi_iou > ROI_TRIGGER_THRESHOLD):
