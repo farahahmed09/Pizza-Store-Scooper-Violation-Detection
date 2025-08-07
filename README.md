@@ -80,9 +80,9 @@ Please begin by downloading the folder from the link provided below and placing 
 
 This folder includes the following components:
 
-    * Pretrained model weights
-    * Database files will be created when running
-    * Raw video file for inference
+*  Pretrained model weights
+* Database files will be created when running
+* Raw video file for inference
 
 Note:
 This folder is excluded from version control via .gitignore for security reasons and because GitHub does not support uploading large files of this size.
