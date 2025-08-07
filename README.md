@@ -80,12 +80,8 @@ Please begin by downloading the folder from the link provided below and placing 
 
 This folder includes the following components:
 
-  * Pretrained model weights
-
-    * Helper scripts
-
+    * Pretrained model weights
     * Database files will be created when running
-
     * Raw video file for inference
 
 Note:
