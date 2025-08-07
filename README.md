@@ -152,3 +152,6 @@ http://localhost:8000
 * **Microservices and API**: FastAPI, WebSockets, RabbitMQ, Pika, Uvicorn
 * **Database**: SQLite , Pillow
 * **Frontend**: HTML, CSS
+
+## System Working : Recorded Video
+https://drive.google.com/drive/folders/1RUCymxz8RdGWP39nZexELJttzXD8W2-N?usp=sharing
