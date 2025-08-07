@@ -74,7 +74,26 @@ Download the `.exe` installer and run it, accepting the default settings.
 
 Follow these steps in order to launch the application.
 
-### 1. Start the RabbitMQ Service
+### 1. Download the pre needed data
+
+Please begin by downloading the folder from the link provided below and placing it in the root directory of the project.
+
+This folder includes the following components:
+
+  * Pretrained model weights
+
+    * Helper scripts
+
+    * Database files will be created when running
+
+    * Raw video file for inference
+
+Note:
+This folder is excluded from version control via .gitignore for security reasons and because GitHub does not support uploading large files of this size.
+
+Link : https://drive.google.com/drive/folders/1beqBDKscMMdgf8eEbVb_J8ekXl8LkLtf?usp=sharing
+
+### 2. Start the RabbitMQ Service
 
 Start the RabbitMQ service from your Windows Start Menu.
 
@@ -92,7 +111,7 @@ Login with:
 **Username**: `guest`  
 **Password**: `guest`
 
-### 2. Setup the Database
+### 3. Setup the Database
 
 Run the database setup script once to create a clean `violations.db` file.
 
@@ -100,8 +119,7 @@ Run the database setup script once to create a clean `violations.db` file.
 python setup_database.py
 ```
 
-### 3. Run the Microservices
-
+### 4. Run the Microservices
 
 
 #### 1. Open RabbitMQ Management Dashboard
@@ -136,7 +154,7 @@ python services/streaming_service/main.py
 python services/frame_reader/main.py
 ```
 
-### 4. View the Output
+### 5. View the Output
 
 Open your web browser and go to:
 
@@ -154,4 +172,4 @@ http://localhost:8000
 * **Frontend**: HTML, CSS
 
 ## System Working : Recorded Video
-https://drive.google.com/drive/folders/1RUCymxz8RdGWP39nZexELJttzXD8W2-N?usp=sharing
+Link: https://drive.google.com/drive/folders/1RUCymxz8RdGWP39nZexELJttzXD8W2-N?usp=sharing
