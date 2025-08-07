@@ -1,32 +1,35 @@
 """
-File: Detection_main.py
+File: Detection_video_saved.py
 
 Description:
-Real-time video processing script that detects food safety violations in 
+Video processing script that detects food safety violations in 
 a pizza store by monitoring if hands touch pizza without using a scooper.
+This version can read from an input video file OR a live webcam feed.
+If reading from a file, it saves an annotated output video.
 """
 
 # --- Imports ---
-import cv2  # OpenCV for image processing
+import cv2                    # OpenCV for image and video processing
 from ultralytics import YOLO  # YOLOv12 object detection model
-import pika  # RabbitMQ client for receiving/sending frames
-import numpy as np  # NumPy for array and matrix operations
-import json  # For saving detection data in structured format
-import base64  # To encode image data for publishing
-import sqlite3  # To log violations into SQLite database
-import datetime  # To timestamp violations
-import os  # File system operations
-import shutil  # Optional file operations (not used here)
+import numpy as np            # NumPy for array and matrix operations
+import json                   # For saving detection data in structured format
+import sqlite3                # To log violations into SQLite database
+import datetime               # To timestamp violations
+import os                     # File system operations
+import sys                    # For system-level operations like exiting
 
 # --- Paths & Config ---
+INPUT_VIDEO_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\videos\Sah w b3dha ghalt (2).mp4" # <--- SET TO 0 FOR WEBCAM
+OUTPUT_VIDEO_DIR = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\output_vid"
 MODEL_PATH = r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\models\yolo12m-v2.pt"
-DB_PATH = "data/violations.db"  # SQLite DB path for logging violations
-VIOLATIONS_DIR = "data/violations"  # Directory to save violation images and JSONs
+DB_PATH = "data/violations.db"
+VIOLATIONS_DIR = "data/violations"
 
 # Predefined regions where hand intrusions are monitored (hardcoded ROIs)
 ROIS = [
-    (244, 323, 286, 357),
-    (272, 200, 307, 242)
+
+    (452, 336, 521, 385),
+    (417, 587, 475, 531)
 ]
 
 # Detection thresholds and timeouts (tuned empirically)
@@ -35,12 +38,12 @@ ROI_TRIGGER_THRESHOLD = 0.4
 VIOLATION_THRESHOLD = 0.29
 SCOOPER_USAGE_THRESHOLD = 0.1
 WAIT_COUNTER_THRESHOLD = 15
-INFERENCE_FPS = 10 
+INFERENCE_FPS = 10
 
 # --- Utility Functions ---
 
-# Compute Intersection over Union (IoU) between two bounding boxes
 def calculate_iou(boxA, boxB):
+    """Compute Intersection over Union (IoU) between two bounding boxes."""
     xA = max(boxA[0], boxB[0]); yA = max(boxA[1], boxB[1])
     xB = min(boxA[2], boxB[2]); yB = min(boxA[3], boxB[3])
     intersection_area = max(0, xB - xA) * max(0, yB - yA)
@@ -49,8 +52,8 @@ def calculate_iou(boxA, boxB):
     union_area = float(boxA_area + boxB_area - intersection_area)
     return intersection_area / union_area if union_area > 0 else 0
 
-# Return the maximum IoU value across all box pairs between two lists
 def get_max_overlap_iou(boxesA, boxesB):
+    """Return the maximum IoU value across all box pairs between two lists."""
     max_iou = 0.0
     if not boxesA or not boxesB: return max_iou
     for boxA in boxesA:
@@ -66,34 +69,34 @@ class Detector:
         self.model = model
         self.target_class = target_class_name
 
-    # Returns bounding boxes of detections matching the target class
     def detect(self, results):
+        """Returns bounding boxes of detections matching the target class."""
         coords = []
         for box in results[0].boxes:
             if self.model.names[int(box.cls)] == self.target_class:
                 coords.append(box.xyxy[0])
         return coords
 
-# Create the violations directory if it doesn't already exist
-def setup_database():
-    os.makedirs(VIOLATIONS_DIR, exist_ok=True)
-    print("✅ Violations directory confirmed.")
+# --- Setup and Logging ---
 
-# Logs a violation to disk and the SQLite DB
+def setup_directories():
+    """Create the violations and output directories if they don't already exist."""
+    os.makedirs(VIOLATIONS_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_VIDEO_DIR, exist_ok=True) # <<< CHANGE 2: Use OUTPUT_VIDEO_DIR
+    print("✅ Output and violations directories are ready.")
+
 def log_violation(frame_idx, raw_frame, results):
+    """Logs a violation to disk (image/JSON) and the SQLite DB."""
     timestamp = datetime.datetime.now()
     
-    # Define filenames and paths for saving image and JSON
     base_filename = f"violation_{timestamp.strftime('%Y%m%d_%H%M%S')}_f{frame_idx}"
     image_filename = f"{base_filename}.jpg"
     json_filename = f"{base_filename}.json"
     image_path = os.path.join(VIOLATIONS_DIR, image_filename)
     data_path = os.path.join(VIOLATIONS_DIR, json_filename)
 
-    # Save the violation frame as JPEG image
     cv2.imwrite(image_path, raw_frame)
 
-    # Convert bounding box results to structured JSON
     violation_data = []
     for box in results[0].boxes:
         violation_data.append({
@@ -109,7 +112,6 @@ def log_violation(frame_idx, raw_frame, results):
             "detections": violation_data
         }, f, indent=4)
 
-    # Insert violation metadata into the database
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -119,54 +121,52 @@ def log_violation(frame_idx, raw_frame, results):
         )
         conn.commit()
         conn.close()
-        print(f"  💾 Violation at frame {frame_idx} logged to database.", flush=True)
+        print(f"       💾 Violation at frame {frame_idx} logged to database.", flush=True)
     except Exception as e:
-        print(f"❌ Error saving to database: {e}", flush=True)
+        print(f"       ❌ Error saving to database: {e}", flush=True)
 
-# --- Model Initialization and Global State ---
-model = YOLO(MODEL_PATH)
+# --- Model Initialization ---
+try:
+    model = YOLO(MODEL_PATH)
+except Exception as e:
+    print(f"❌ Error loading YOLO model from '{MODEL_PATH}': {e}")
+    sys.exit(1)
+    
 hand_detector = Detector(model, 'hand')
 pizza_detector = Detector(model, 'pizza')
 scooper_detector = Detector(model, 'scooper')
 
-frame_idx = 0
+# --- Global State Variables ---
 violation_count = 0
 hand_was_in_roi_prev_frame = False
-grap_it = True  # Flag: whether current hand attempt is allowed
-system_state = "idle"  # FSM: 'idle' or 'monitoring'
+grap_it = True
+system_state = "idle"
 monitoring_start_frame = -1
-original_fps = 10
-monitoring_timeout_frames = original_fps * MONITORING_TIMEOUT_SECONDS
-wait_counter = 0  # Prevent logging temporary/premature violations
-skip_interval = max(1, int(original_fps // INFERENCE_FPS))
+wait_counter = 0
 last_results = None
+monitoring_timeout_frames = 0 # Will be initialized in main
+skip_interval = 1 # Will be initialized in main
 
-# --- Frame Processing Callback (triggered by RabbitMQ) ---
-def process_frame(ch, method, properties, body):
-    global frame_idx, violation_count, hand_was_in_roi_prev_frame
-    global system_state, monitoring_start_frame, grap_it, wait_counter,last_results
 
-    frame_idx += 1  # Track current frame number
+def run_detection_logic(frame, frame_idx):
+    """
+    Processes a single video frame to detect violations.
+    Modifies global state variables and returns the annotated frame.
+    """
+    global violation_count, hand_was_in_roi_prev_frame
+    global system_state, monitoring_start_frame, grap_it, wait_counter, last_results
 
-    # Decode JPEG frame to OpenCV format
-    nparr = np.frombuffer(body, np.uint8)
-    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    print(f"\n--- [FRAME {frame_idx}] State: {system_state.upper()} ---", flush=True)
 
-    print(f"\n--- [FRAME {frame_idx}] Received. State: {system_state.upper()} ---", flush=True)
-
-    # Run YOLOv8 object tracking
-    #results = model.track(frame, persist=True, verbose=False)
-    # --- OPTIMIZATION: Run AI model only periodically ---
+    # --- Optimization: Run AI model only periodically ---
     if frame_idx % skip_interval == 0:
         last_results = model.track(frame, persist=True, verbose=False)
 
-    # If no AI results exist yet, skip the frame
     if last_results is None:
-        return
+        return frame # Return original frame if no inference has run yet
 
     # Use the most recent AI results for detection
     results = last_results
-# ---------------------------------------------------
 
     # Run class-specific detections
     hand_coords = hand_detector.detect(results)
@@ -232,44 +232,98 @@ def process_frame(ch, method, properties, body):
                 system_state = "idle"
                 grap_it = False
 
-    # Update hand ROI presence state for next frame comparison
     hand_was_in_roi_prev_frame = is_hand_in_roi_now
 
-    # Annotate frame with detections and ROIs
-    #annotated_frame = results[0].plot()
-    # Draw annotations from the last AI result onto the CURRENT frame
-    annotated_frame = last_results[0].plot(img=frame.copy())
+    # --- Annotation and Display ---
+    annotated_frame = frame.copy()
+    if last_results:
+        annotated_frame = last_results[0].plot(img=annotated_frame)
+
     for x1, y1, x2, y2 in ROIS:
         cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        
+    status_text = f"Status: {system_state.upper()}"
+    violation_text = f"Violations: {violation_count}"
+    
+    cv2.rectangle(annotated_frame, (5, 5), (280, 65), (0, 0, 0), -1) 
+    cv2.putText(annotated_frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    violation_color = (0, 0, 255) if violation_count > 0 else (0, 255, 0)
+    cv2.putText(annotated_frame, violation_text, (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.8, violation_color, 2)
+    
+    return annotated_frame
 
-    # Encode final frame as JPEG -> Base64
-    success, buffer = cv2.imencode('.jpg', annotated_frame)
-    if success:
-        frame_as_text = base64.b64encode(buffer).decode('utf-8')
-
-        # Send structured result over message queue
-        message = {
-            "frame": frame_as_text,
-            "violations": violation_count,
-            "state": system_state
-        }
-        ch.basic_publish(exchange='', routing_key='results_queue', body=json.dumps(message))
-        print(f"Frame {frame_idx}: Published results. Violations: {violation_count}", flush=True)
-
-# --- Start RabbitMQ Consumer Loop ---
+# <<< CHANGE 3: MAIN EXECUTION BLOCK NOW HANDLES WEBCAM AND FILE INPUT >>>
 if __name__ == "__main__":
-    try:
-        os.makedirs(VIOLATIONS_DIR, exist_ok=True)  # Ensure output dir exists
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        channel = connection.channel()
-        channel.queue_declare(queue='video_frames')
-        channel.queue_declare(queue='results_queue')
-        channel.basic_consume(queue='video_frames', on_message_callback=process_frame, auto_ack=True)
-        print('✅ Detection Service started. Waiting for frames...', flush=True)
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        print("\nStopping consumer...", flush=True)
-    finally:
-        if 'connection' in locals() and connection.is_open:
-            connection.close()
-        print("Detection service stopped.", flush=True)
+    setup_directories()
+
+    # --- Video Input ---
+    using_webcam = False
+    if INPUT_VIDEO_PATH == 0 or not os.path.exists(INPUT_VIDEO_PATH):
+        if INPUT_VIDEO_PATH != 0:
+            print(f"⚠️ Warning: Video file not found at '{INPUT_VIDEO_PATH}'.")
+        print("✅ Switching to webcam feed...")
+        cap = cv2.VideoCapture(0) # Use 0 for default webcam
+        using_webcam = True
+    else:
+        print(f"✅ Opening video file: {INPUT_VIDEO_PATH}")
+        cap = cv2.VideoCapture(INPUT_VIDEO_PATH)
+
+    if not cap.isOpened():
+        print(f"❌ Error: Could not open video source. Please check camera connection or file path.")
+        sys.exit(1)
+
+    # --- Video Output (only for file processing) ---
+    out = None
+    if not using_webcam:
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        original_fps = cap.get(cv2.CAP_PROP_FPS)
+        
+        monitoring_timeout_frames = original_fps * MONITORING_TIMEOUT_SECONDS
+        skip_interval = max(1, int(original_fps // INFERENCE_FPS))
+        
+        # Create a valid output file path
+        base_filename = os.path.basename(INPUT_VIDEO_PATH)
+        output_filename = os.path.join(OUTPUT_VIDEO_DIR, f"output_{base_filename}")
+        
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_filename, fourcc, original_fps, (frame_width, frame_height))
+        print(f"🎞️  Annotated video will be saved to: {output_filename}")
+    else:
+        # For webcam, use default values
+        monitoring_timeout_frames = INFERENCE_FPS * MONITORING_TIMEOUT_SECONDS
+        skip_interval = 2 # Process every other frame for smoother webcam feed
+
+    # --- Main Loop ---
+    frame_idx = 0
+    print("🚀 Starting detection... Press 'q' in the display window to quit.")
+    
+    while True: # Changed from cap.isOpened() to allow breaking from inside
+        ret, frame = cap.read()
+        if not ret:
+            if not using_webcam:
+                print("✅ End of video file reached.")
+            else:
+                print("❌ Error: Could not read frame from webcam.")
+            break
+
+        frame_idx += 1
+        
+        annotated_frame = run_detection_logic(frame, frame_idx)
+
+        # Write frame to output file if processing a video
+        if out is not None:
+            out.write(annotated_frame)
+        
+        cv2.imshow('Pizza Store Violation Detection', annotated_frame)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("🛑 User pressed 'q'. Exiting.")
+            break
+
+    # --- Release Resources ---
+    print("\n✅ Processing finished. Releasing resources.")
+    cap.release()
+    if out is not None:
+        out.release()
+    cv2.destroyAllWindows()

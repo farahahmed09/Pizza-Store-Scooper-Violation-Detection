@@ -15,7 +15,7 @@ import os
 # --- Configurations ---
 # Load video path from environment variable or fallback to default
 VIDEO_PATH = os.getenv("VIDEO_PATH", r"D:\ai_projects\Pizza-Store-Scooper-Violation-Detection\data\videos\Sah w b3dha ghalt (2).mp4")
-TARGET_FPS = 8  # Frame rate to publish frames at
+TARGET_FPS = 15  # Frame rate to publish frames at
 RESIZE_WIDTH = 1024  # Resize all frames to this width for consistency
 
 # --- RabbitMQ Setup ---
