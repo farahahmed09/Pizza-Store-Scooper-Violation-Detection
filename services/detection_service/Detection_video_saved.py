@@ -27,7 +27,6 @@ VIOLATIONS_DIR = "data/violations"
 
 # Predefined regions where hand intrusions are monitored (hardcoded ROIs)
 ROIS = [
-
     (452, 336, 521, 385),
     (417, 587, 475, 531)
 ]
