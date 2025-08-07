@@ -25,8 +25,9 @@ VIOLATIONS_DIR = "data/violations"  # Directory to save violation images and JSO
 
 # Predefined regions where hand intrusions are monitored (hardcoded ROIs)
 ROIS = [
-    (244, 323, 286, 357),
+   (244, 323, 286, 357),
     (272, 200, 307, 242)
+
 ]
 
 # Detection thresholds and timeouts (tuned empirically)
